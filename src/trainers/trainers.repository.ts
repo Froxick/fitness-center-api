@@ -12,7 +12,7 @@ export class TrainersRepository {
     return Array.from(this.store.values());
   }
 
-  findByid(id: string): Trainer | undefined {
+  findById(id: string): Trainer | undefined {
     return this.store.get(id);
   }
 
