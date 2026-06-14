@@ -1,98 +1,153 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Fitness Center REST API — Часть 1
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+REST API системы управления фитнес-центром. Данные хранятся в памяти процесса (in-memory, Map). База данных подключается во второй части.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+---
 
-## Project setup
+## 1. Выбор технологий
 
-```bash
-$ npm install
-```
+| Технология | Версия | Назначение |
+|---|---|---|
+| Node.js | 20+ | Среда выполнения |
+| TypeScript | 5+ | Язык разработки |
+| NestJS | 10+ | Фреймворк для REST API |
+| class-validator | 0.14+ | Валидация входных данных |
+| class-transformer | 0.5+ | Преобразование типов (DTO → класс) |
 
-## Compile and run the project
+**Почему NestJS** — модульная архитектура из коробки, встроенная поддержка валидации через `ValidationPipe`, удобное разделение на слои (Controller → Service → Repository).
+
+**Почему Map вместо Array** — поиск по `id` через `map.get(id)` работает за O(1), тогда как `array.find()` — O(n).
+
+---
+
+## 2. Шаги по реализации
+
+### 2.1. Инициализация проекта
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+nest new fitness-center-api
+cd fitness-center-api
+npm install class-validator class-transformer
 ```
 
-## Run tests
+### 2.2. Настройка ValidationPipe в `main.ts`
+
+```ts
+app.useGlobalPipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+);
+```
+
+### 2.3. Структура проекта
+
+```
+src/
+├── clients/
+│   ├── dto/
+│   │   ├── create-client.dto.ts
+│   │   ├── update-client.dto.ts
+│   │   └── update-client-status.dto.ts
+│   ├── clients.controller.ts
+│   ├── clients.service.ts
+│   ├── clients.repository.ts
+│   └── clients.module.ts
+├── trainers/
+│   ├── dto/
+│   │   ├── create-trainer.dto.ts
+│   │   ├── update-trainer.dto.ts
+│   │   └── update-trainer-status.dto.ts
+│   ├── trainers.controller.ts
+│   ├── trainers.service.ts
+│   ├── trainers.repository.ts
+│   └── trainers.module.ts
+├── types/
+│   ├── client.type.ts
+│   └── trainer.type.ts
+└── main.ts
+```
+
+### 2.4. Архитектура слоёв
+
+```
+Controller  →  принимает HTTP-запрос, вызывает сервис, возвращает ответ
+Service     →  бизнес-логика (проверка существования, связи между сущностями)
+Repository  →  CRUD-операции с хранилищем (in-memory Map)
+```
+
+Такое разделение позволяет заменить `Repository` на реальную БД во второй части без изменения `Controller` и `Service`.
+
+### 2.5. Генерация модулей
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+nest generate resource trainers
+nest generate resource clients
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### 2.6. Запуск в режиме разработки
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Сервер запускается на `http://localhost:3000` с автоматической перезагрузкой при изменении файлов.
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+## 3. REST API — эндпоинты
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Базовый путь: `/api/`
 
-## Support
+### Тренеры (`/api/trainers`)
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+| Метод | Путь | Описание | Статус |
+|---|---|---|---|
+| POST | /api/trainers | Создать тренера | 201 |
+| GET | /api/trainers | Список всех тренеров | 200 |
+| GET | /api/trainers/:id/detail | Тренер + список его клиентов | 200 |
+| PUT | /api/trainers/:id | Обновить данные тренера | 200 |
+| PATCH | /api/trainers/:id/status | Изменить статус тренера | 200 |
 
-## Stay in touch
+### Клиенты (`/api/clients`)
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+| Метод | Путь | Описание | Статус |
+|---|---|---|---|
+| POST | /api/clients | Создать клиента | 201 |
+| GET | /api/clients | Список всех клиентов | 200 |
+| GET | /api/clients/:id | Краткая информация о клиенте | 200 |
+| GET | /api/clients/:id/detail | Клиент + вложенный объект тренера | 200 |
+| PUT | /api/clients/:id | Обновить данные клиента | 200 |
+| PATCH | /api/clients/:id/status | Активировать / деактивировать | 200 |
+| POST | /api/clients/:clientId/trainer/:trainerId | Назначить тренера клиенту | 200 |
 
-## License
+---
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+## 4. Демонстрация результата
+
+
+
+### Создание тренера (POST /api/trainers)
+![Создание тренера](./docs/screenshots/create-trainer.png)
+
+### Список тренеров (GET /api/trainers)
+![Список тренеров](./docs/screenshots/get-trainers.png)
+
+### Детальная информация о тренере (GET /api/trainers/:id/detail)
+![Детальная информация о тренере](./docs/screenshots/get-trainer-detail.png)
+
+### Создание клиента (POST /api/clients)
+![Создание клиента](./docs/screenshots/create-client.png)
+
+### Назначение тренера клиенту (POST /api/clients/:clientId/trainer/:trainerId)
+![Назначение тренера](./docs/screenshots/assign-trainer.png)
+
+### Детальная информация о клиенте с тренером (GET /api/clients/:id/detail)
+![Детальная информация о клиенте](./docs/screenshots/get-client-detail.png)
+
+### Валидация — ошибка 400
+![Ошибка валидации](./docs/screenshots/validation-error.png)
