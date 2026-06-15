@@ -10,7 +10,7 @@ import { TrainersRepository } from 'src/trainers/trainers.repository';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { UpdateClientStatusDto } from './dto/update-client-status.dto';
-import { Client } from 'src/types/client.type';
+import { Client } from '@prisma/client';
 
 @Injectable()
 export class ClientsService {
@@ -20,9 +20,9 @@ export class ClientsService {
     private readonly trainersRepository: TrainersRepository,
   ) {}
 
-  create(dto: CreateClientDto): Client {
+  async create(dto: CreateClientDto): Promise<Client> {
     if (dto.trainerId) {
-      const trainer = this.trainersRepository.findById(dto.trainerId);
+      const trainer = await this.trainersRepository.findById(dto.trainerId);
       if (!trainer) {
         throw new BadRequestException(`Тренер с id ${dto.trainerId} не найден`);
       }
@@ -31,12 +31,12 @@ export class ClientsService {
     return this.clientsRepository.create(dto);
   }
 
-  findAll(): Client[] {
-    return this.clientsRepository.findAll();
+  async findAll(): Promise<Client[]> {
+    return await this.clientsRepository.findAll();
   }
 
-  findById(id: string): Client {
-    const client = this.clientsRepository.findById(id);
+  async findById(id: string): Promise<Client> {
+    const client = await this.clientsRepository.findById(id);
 
     if (!client) {
       throw new NotFoundException(`Клиент с id ${id} не найден`);
@@ -45,15 +45,15 @@ export class ClientsService {
     return client;
   }
 
-  getDetail(id: string) {
-    const client = this.clientsRepository.findById(id);
+  async getDetail(id: string) {
+    const client = await this.clientsRepository.findById(id);
 
     if (!client) {
       throw new NotFoundException(`Клиент с id ${id} не найден`);
     }
 
     const trainer = client.trainerId
-      ? this.trainersRepository.findById(client.trainerId)
+      ? await this.trainersRepository.findById(client.trainerId)
       : null;
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -65,25 +65,25 @@ export class ClientsService {
     };
   }
 
-  update(id: string, dto: UpdateClientDto): Client {
-    const client = this.clientsRepository.findById(id);
+  async update(id: string, dto: UpdateClientDto): Promise<Client> {
+    const client = await this.clientsRepository.findById(id);
 
     if (!client) {
       throw new NotFoundException(`Клиент с id ${id} не найден`);
     }
 
     if (dto.trainerId) {
-      const trainer = this.trainersRepository.findById(dto.trainerId);
+      const trainer = await this.trainersRepository.findById(dto.trainerId);
       if (!trainer) {
         throw new BadRequestException(`Тренер с id ${dto.trainerId} не найден`);
       }
     }
 
-    return this.clientsRepository.update(id, dto);
+    return await this.clientsRepository.update(id, dto);
   }
 
-  updateStatus(id: string, dto: UpdateClientStatusDto): Client {
-    const client = this.clientsRepository.findById(id);
+  async updateStatus(id: string, dto: UpdateClientStatusDto): Promise<Client> {
+    const client = await this.clientsRepository.findById(id);
 
     if (!client) {
       throw new NotFoundException(`Клиент с id ${id} не найден`);
@@ -92,19 +92,19 @@ export class ClientsService {
     return this.clientsRepository.updateStatus(id, dto.isActive);
   }
 
-  assignTrainer(clientId: string, trainerId: string): Client {
-    const client = this.clientsRepository.findById(clientId);
+  async assignTrainer(clientId: string, trainerId: string): Promise<Client> {
+    const client = await this.clientsRepository.findById(clientId);
 
     if (!client) {
       throw new NotFoundException(`Клиент с id ${clientId} не найден`);
     }
 
-    const trainer = this.trainersRepository.findById(trainerId);
+    const trainer = await this.trainersRepository.findById(trainerId);
 
     if (!trainer) {
       throw new NotFoundException(`Тренер с id ${trainerId} не найден`);
     }
 
-    return this.clientsRepository.assignTrainer(clientId, trainerId);
+    return await this.clientsRepository.assignTrainer(clientId, trainerId);
   }
 }

@@ -1,49 +1,53 @@
 import { Injectable } from '@nestjs/common';
-import { Trainer, TrainerStatus } from 'src/types/trainer.type';
+import { PrismaService } from 'src/prisma/prisma.service';
+
 import { CreateTrainerDto } from './dto/create-trainer.dto';
-import { randomUUID } from 'crypto';
 import { UpdateTrainerDto } from './dto/update-trainer.dto';
+import { Trainer, TrainerStatus } from '@prisma/client';
 
 @Injectable()
 export class TrainersRepository {
-  private readonly store = new Map<string, Trainer>();
+  constructor(private readonly prisma: PrismaService) {}
 
-  findAll(): Trainer[] {
-    return Array.from(this.store.values());
+  async findAll(): Promise<Trainer[]> {
+    return await this.prisma.trainer.findMany();
   }
 
-  findById(id: string): Trainer | undefined {
-    return this.store.get(id);
+  async findById(id: string): Promise<Trainer | null> {
+    return await this.prisma.trainer.findUnique({
+      where: { id },
+    });
   }
 
-  create(dto: CreateTrainerDto): Trainer {
-    const trainer: Trainer = {
-      id: randomUUID(),
-      surname: dto.surname,
-      name: dto.name,
-      patronymic: dto.patronymic,
-      phone: dto.phone,
-      status: TrainerStatus.WORKING,
-    };
-
-    this.store.set(trainer.id, trainer);
-    return trainer;
+  async create(dto: CreateTrainerDto): Promise<Trainer> {
+    return await this.prisma.trainer.create({
+      data: {
+        surname: dto.surname,
+        name: dto.name,
+        patronymic: dto.patronymic,
+        phone: dto.phone,
+        status: TrainerStatus.WORKING,
+      },
+    });
   }
 
-  update(id: string, dto: UpdateTrainerDto): Trainer {
-    const existing = this.store.get(id)!;
-    const updated: Trainer = { ...existing, ...dto };
-    this.store.set(id, updated);
-    return updated;
+  async update(id: string, dto: UpdateTrainerDto): Promise<Trainer> {
+    return await this.prisma.trainer.update({
+      where: { id },
+      data: dto,
+    });
   }
 
-  updateStatus(id: string, status: TrainerStatus): Trainer {
-    const existing = this.store.get(id)!;
-    const updated: Trainer = { ...existing, status };
-    this.store.set(id, updated);
-    return updated;
+  async updateStatus(id: string, status: TrainerStatus): Promise<Trainer> {
+    return await this.prisma.trainer.update({
+      where: { id },
+      data: { status },
+    });
   }
-  existsById(id: string): boolean {
-    return this.store.has(id);
+
+  async existsById(id: string): Promise<boolean> {
+    return await this.prisma.trainer
+      .findUnique({ where: { id } })
+      .then((t) => t !== null);
   }
 }

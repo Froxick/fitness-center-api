@@ -1,0 +1,84 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+enum TrainerStatus {
+  WORKING
+  ON_LEAVE
+  NOT_WORKING
+}
+
+model Trainer {
+  id          String        @id @default(uuid())
+  surname     String
+  name        String
+  patronymic  String?
+  phone       String
+  status      TrainerStatus @default(WORKING)
+
+  clients     Client[]
+
+  @@map("trainers")
+}
+
+model Client {
+  id          String    @id @default(uuid())
+  surname     String
+  name        String
+  patronymic  String?
+  birthday    DateTime  @db.Date
+  phone       String
+  email       String
+  isActive    Boolean   @default(true) @map("is_active")
+
+  trainerId   String?   @map("trainer_id")
+  trainer     Trainer?  @relation(fields: [trainerId], references: [id])
+
+  lockerId    String?   @unique @map("locker_id")
+  locker      Locker?   @relation(fields: [lockerId], references: [id])
+
+  services    ClientService[]
+
+  @@map("clients")
+}
+
+model Locker {
+  id        String   @id @default(uuid())
+  number    Int      @unique
+
+  client    Client?
+
+  @@map("lockers")
+}
+
+model Service {
+  id      String  @id  
+  name    String
+  price   Int
+
+  clients ClientService[]
+
+  @@map("services")
+}
+
+model ClientService {
+  clientId  String  @map("client_id")
+  serviceId String  @map("service_id")
+
+  client    Client  @relation(fields: [clientId], references: [id])
+  service   Service @relation(fields: [serviceId], references: [id])
+
+  @@id([clientId, serviceId])
+  @@map("client_services")
+}

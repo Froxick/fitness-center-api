@@ -8,8 +8,9 @@ import { TrainersRepository } from './trainers.repository';
 import { CreateTrainerDto } from './dto/create-trainer.dto';
 import { UpdateTrainerDto } from './dto/update-trainer.dto';
 import { UpdateTrainerStatusDto } from './dto/update-trainer-status.dto';
-import { Trainer } from 'src/types/trainer.type';
+
 import { ClientsRepository } from 'src/clients/clients.repository';
+import { Trainer } from '@prisma/client';
 
 @Injectable()
 export class TrainersService {
@@ -19,42 +20,45 @@ export class TrainersService {
     private readonly clientsRepository: ClientsRepository,
   ) {}
 
-  create(dto: CreateTrainerDto): Trainer {
-    return this.trainersRepository.create(dto);
+  async create(dto: CreateTrainerDto): Promise<Trainer> {
+    return await this.trainersRepository.create(dto);
   }
 
-  findAll(): Trainer[] {
-    return this.trainersRepository.findAll();
+  async findAll(): Promise<Trainer[]> {
+    return await this.trainersRepository.findAll();
   }
 
-  update(id: string, dto: UpdateTrainerDto): Trainer {
-    const trainer = this.trainersRepository.findById(id);
+  async update(id: string, dto: UpdateTrainerDto): Promise<Trainer> {
+    const trainer = await this.trainersRepository.findById(id);
 
     if (!trainer) {
       throw new NotFoundException(`Тренер с id ${id} не найден`);
     }
 
-    return this.trainersRepository.update(id, dto);
+    return await this.trainersRepository.update(id, dto);
   }
 
-  updateStatus(id: string, dto: UpdateTrainerStatusDto): Trainer {
-    const trainer = this.trainersRepository.findById(id);
+  async updateStatus(
+    id: string,
+    dto: UpdateTrainerStatusDto,
+  ): Promise<Trainer> {
+    const trainer = await this.trainersRepository.findById(id);
 
     if (!trainer) {
       throw new NotFoundException(`Тренер с id ${id} не найден`);
     }
 
-    return this.trainersRepository.updateStatus(id, dto.status);
+    return await this.trainersRepository.updateStatus(id, dto.status);
   }
 
-  getDetail(id: string) {
-    const trainer = this.trainersRepository.findById(id);
+  async getDetail(id: string) {
+    const trainer = await this.trainersRepository.findById(id);
 
     if (!trainer) {
       throw new NotFoundException(`Тренер с id ${id} не найден`);
     }
 
-    const clients = this.clientsRepository.findByTrainerId(id);
+    const clients = await this.clientsRepository.findByTrainerId(id);
 
     return {
       ...trainer,

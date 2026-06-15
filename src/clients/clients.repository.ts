@@ -1,63 +1,66 @@
 import { Injectable } from '@nestjs/common';
-import { randomUUID } from 'crypto';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
-import { Client } from 'src/types/client.type';
+import { Client } from '@prisma/client';
 
 @Injectable()
 export class ClientsRepository {
-  private readonly store = new Map<string, Client>();
+  constructor(private readonly prisma: PrismaService) {}
 
-  findAll(): Client[] {
-    return Array.from(this.store.values());
+  async findAll(): Promise<Client[]> {
+    return this.prisma.client.findMany();
   }
 
-  findById(id: string): Client | undefined {
-    return this.store.get(id);
+  async findById(id: string): Promise<Client | null> {
+    return this.prisma.client.findUnique({
+      where: { id },
+    });
   }
 
-  findByTrainerId(trainerId: string): Client[] {
-    return Array.from(this.store.values()).filter(
-      (client) => client.trainerId === trainerId,
-    );
+  async findByTrainerId(trainerId: string): Promise<Client[]> {
+    return this.prisma.client.findMany({
+      where: { trainerId },
+    });
   }
 
-  create(dto: CreateClientDto): Client {
-    const client: Client = {
-      id: randomUUID(),
-      surname: dto.surname,
-      name: dto.name,
-      patronymic: dto.patronymic,
-      birthday: dto.birthday,
-      phone: dto.phone,
-      email: dto.email,
-      isActive: true,
-      trainerId: dto.trainerId,
-    };
-
-    this.store.set(client.id, client);
-    return client;
+  async create(dto: CreateClientDto): Promise<Client> {
+    return this.prisma.client.create({
+      data: {
+        surname: dto.surname,
+        name: dto.name,
+        patronymic: dto.patronymic,
+        birthday: new Date(dto.birthday),
+        phone: dto.phone,
+        email: dto.email,
+        isActive: true,
+        trainerId: dto.trainerId,
+      },
+    });
   }
 
-  update(id: string, dto: UpdateClientDto): Client {
-    const existing = this.store.get(id)!;
-    const updated: Client = { ...existing, ...dto };
-    this.store.set(id, updated);
-    return updated;
+  async update(id: string, dto: UpdateClientDto): Promise<Client> {
+    return this.prisma.client.update({
+      where: { id },
+      data: {
+        ...dto,
+        birthday: dto.birthday ? new Date(dto.birthday) : undefined,
+      },
+    });
   }
 
-  updateStatus(id: string, isActive: boolean): Client {
-    const existing = this.store.get(id)!;
-    const updated: Client = { ...existing, isActive };
-    this.store.set(id, updated);
-    return updated;
+  async updateStatus(id: string, isActive: boolean): Promise<Client> {
+    return this.prisma.client.update({
+      where: { id },
+      data: { isActive },
+    });
   }
 
-  assignTrainer(clientId: string, trainerId: string): Client {
-    const existing = this.store.get(clientId)!;
-    const updated: Client = { ...existing, trainerId };
-    this.store.set(clientId, updated);
-    return updated;
+  async assignTrainer(clientId: string, trainerId: string): Promise<Client> {
+    return this.prisma.client.update({
+      where: { id: clientId },
+      data: { trainerId },
+    });
   }
 }
