@@ -1,8 +1,12 @@
-# Fitness Center REST API — Часть 1
+# Fitness Center REST API — Часть 2
 
-REST API системы управления фитнес-центром. Данные хранятся в памяти процесса (in-memory, Map). База данных подключается во второй части.
+Расширение REST API фитнес-центра: подключение PostgreSQL через Prisma ORM, новые сущности (шкафчики, дополнительные услуги), автоматическое заполнение БД при первом запуске.
 
+## Ветка для второй части
 
+```bash
+git checkout part-2
+```
 
 ---
 
@@ -13,95 +17,173 @@ REST API системы управления фитнес-центром. Дан
 | Node.js | 20+ | Среда выполнения |
 | TypeScript | 5+ | Язык разработки |
 | NestJS | 10+ | Фреймворк для REST API |
+| PostgreSQL | 15+ | Реляционная база данных |
+| Prisma ORM | 7+ | Работа с БД, миграции, типизация |
+| @prisma/adapter-pg | 7+ | Адаптер подключения к PostgreSQL |
 | class-validator | 0.14+ | Валидация входных данных |
-| class-transformer | 0.5+ | Преобразование типов (DTO → класс) |
+| class-transformer | 0.5+ | Преобразование типов |
 
-**Почему NestJS** — модульная архитектура из коробки, встроенная поддержка валидации через `ValidationPipe`, удобное разделение на слои (Controller → Service → Repository).
+**Почему PostgreSQL** — надёжная реляционная СУБД, хорошо подходит для связанных сущностей.
 
-**Почему Map вместо Array** — поиск по `id` через `map.get(id)` работает за O(1), тогда как `array.find()` — O(n).
+**Почему Prisma** — типобезопасные запросы генерируются из схемы, встроенные миграции, удобный `include` для связанных данных вместо ручных JOIN.
+
+**Почему трёхслойная архитектура** — замена репозиториев с in-memory Map на Prisma не потребовала изменений в контроллерах и сервисах. Только файлы `*.repository.ts`.
 
 ---
 
 ## 2. Шаги по реализации
 
-### 2.1. Инициализация проекта
+### 2.1. Установка зависимостей
 
 ```bash
-nest new fitness-center-api
-cd fitness-center-api
-npm install class-validator class-transformer
+npm install prisma @prisma/client @prisma/adapter-pg
+npm install dotenv
+npx prisma init
 ```
 
-### 2.2. Настройка ValidationPipe в `main.ts`
+### 2.2. Настройка подключения
+
+Создать файл `.env` в корне проекта:
+
+```env
+DATABASE_URL="postgresql://postgres:your_password@localhost:5432/fitness_center"
+```
+
+Конфигурация Prisma в `prisma.config.ts`:
 
 ```ts
-app.useGlobalPipes(
-  new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-  }),
-);
+import 'dotenv/config';
+import { defineConfig } from 'prisma/config';
+
+export default defineConfig({
+  schema: 'prisma/schema.prisma',
+  migrations: { path: 'prisma/migrations' },
+  datasource: { url: process.env.DATABASE_URL },
+});
 ```
 
-### 2.3. Структура проекта
+### 2.3. Схема базы данных (`prisma/schema.prisma`)
+
+Сущности и связи:
+
+- `Trainer` → `Client`: один ко многим (у тренера много клиентов)
+- `Client` → `Locker`: один к одному (у клиента максимум один шкафчик)
+- `Client` ↔ `Service`: многие ко многим через `ClientService`
+
+### 2.4. Миграция и генерация клиента
+
+```bash
+npx prisma migrate dev --name init
+npx prisma generate
+```
+
+### 2.5. PrismaService
+
+Глобальный модуль `PrismaModule` оборачивает `PrismaClient` и управляет жизненным циклом соединения через `OnModuleInit` / `OnModuleDestroy`.
+
+### 2.6. Seed — автозаполнение БД
+
+Скрипт `prisma/seed.ts` заполняет БД начальными данными при первом запуске:
+- **20 шкафчиков** (номера 1–20) — создаются только если таблица пустая
+- **5 услуг** (Солярий, Бассейн, Сауна, Криосауна, Кроссфит) — через `upsert`, безопасно при повторном запуске
+
+### 2.7. Замена репозиториев
+
+Репозитории `TrainersRepository` и `ClientsRepository` переписаны с `Map` на методы Prisma (`findMany`, `findUnique`, `create`, `update`). Контроллеры и сервисы не изменялись.
+
+### 2.8 Новые модули - Locker,Additional-services
+
+Добавлены новые module,controller,service,repository для новых сущностей 
+
+### 2.9. Структура проекта
 
 ```
 src/
-├── clients/
-│   ├── dto/
-│   │   ├── create-client.dto.ts
-│   │   ├── update-client.dto.ts
-│   │   └── update-client-status.dto.ts
-│   ├── clients.controller.ts
-│   ├── clients.service.ts
-│   ├── clients.repository.ts
-│   └── clients.module.ts
+├── prisma/
+│   ├── prisma.service.ts
+│   └── prisma.module.ts
 ├── trainers/
 │   ├── dto/
-│   │   ├── create-trainer.dto.ts
-│   │   ├── update-trainer.dto.ts
-│   │   └── update-trainer-status.dto.ts
 │   ├── trainers.controller.ts
 │   ├── trainers.service.ts
 │   ├── trainers.repository.ts
 │   └── trainers.module.ts
-├── types/
-│   ├── client.type.ts
-│   └── trainer.type.ts
+├── clients/
+│   ├── dto/
+│   ├── clients.controller.ts
+│   ├── clients.service.ts
+│   ├── clients.repository.ts
+│   └── clients.module.ts
+├── lockers/
+│   ├── lockers.controller.ts
+│   ├── lockers.service.ts
+│   ├── lockers.repository.ts
+│   └── lockers.module.ts
+├── additional-services/
+│   ├── additional-services.controller.ts
+│   ├── additional-services.service.ts
+│   ├── additional-services.repository.ts
+│   └── additional-services.module.ts
 └── main.ts
 ```
 
-### 2.4. Архитектура слоёв
+---
 
-```
-Controller  →  принимает HTTP-запрос, вызывает сервис, возвращает ответ
-Service     →  бизнес-логика (проверка существования, связи между сущностями)
-Repository  →  CRUD-операции с хранилищем (in-memory Map)
-```
+## 3. Инструкция по запуску
 
-Такое разделение позволяет заменить `Repository` на реальную БД во второй части без изменения `Controller` и `Service`.
+### Требования
+- Node.js 20+
+- PostgreSQL 15+
 
-### 2.5. Генерация модулей
+### Шаги
 
+**1. Клонировать репозиторий и перейти в ветку**
 ```bash
-nest generate resource trainers
-nest generate resource clients
+git clone <url>
+cd fitness-center-api
+git checkout part-2
 ```
 
-### 2.6. Запуск в режиме разработки
+**2. Установить зависимости**
+```bash
+npm install
+```
 
+**3. Создать `.env` файл**
+```env
+DATABASE_URL="postgresql://postgres:your_password@localhost:5432/fitness_center"
+```
+
+**4. Создать базу данных в PostgreSQL**
+```sql
+CREATE DATABASE fitness_center;
+```
+
+**5. Применить миграции**
+```bash
+npx prisma migrate deploy
+```
+
+**6. Сгенерировать Prisma Client**
+```bash
+npx prisma generate
+```
+
+**7. Заполнить БД начальными данными**
+```bash
+npm run prisma:seed
+```
+
+**8. Запустить сервер**
 ```bash
 npm run start:dev
 ```
 
-Сервер запускается на `http://localhost:3000` с автоматической перезагрузкой при изменении файлов.
+Сервер запустится на `http://localhost:3000`
 
 ---
 
-## 3. REST API — эндпоинты
-
-Базовый путь: `/api/`
+## 4. REST API — все эндпоинты
 
 ### Тренеры (`/api/trainers`)
 
@@ -109,7 +191,7 @@ npm run start:dev
 |---|---|---|---|
 | POST | /api/trainers | Создать тренера | 201 |
 | GET | /api/trainers | Список всех тренеров | 200 |
-| GET | /api/trainers/:id/detail | Тренер + список его клиентов | 200 |
+| GET | /api/trainers/:id/detail | Тренер + список его клиентов  | 200 |
 | PUT | /api/trainers/:id | Обновить данные тренера | 200 |
 | PATCH | /api/trainers/:id/status | Изменить статус тренера | 200 |
 
@@ -120,34 +202,61 @@ npm run start:dev
 | POST | /api/clients | Создать клиента | 201 |
 | GET | /api/clients | Список всех клиентов | 200 |
 | GET | /api/clients/:id | Краткая информация о клиенте | 200 |
-| GET | /api/clients/:id/detail | Клиент + вложенный объект тренера | 200 |
+| GET | /api/clients/:id/detail | Клиент + тренер + шкафчик + услуги | 200 |
 | PUT | /api/clients/:id | Обновить данные клиента | 200 |
 | PATCH | /api/clients/:id/status | Активировать / деактивировать | 200 |
-| POST | /api/clients/:clientId/trainer/:trainerId | Назначить тренера клиенту | 200 |
+| POST | /api/clients/:clientId/trainer/:trainerId | Назначить тренера | 200 |
+| POST | /api/clients/:clientId/locker/:lockerId | Назначить шкафчик | 200 |
+| POST | /api/clients/:clientId/additionalServices/:serviceId | Добавить услугу | 200 |
+
+### Шкафчики (`/api/lockers`)
+
+| Метод | Путь | Описание | Статус |
+|---|---|---|---|
+| GET | /api/lockers | Список всех шкафчиков со статусом | 200 |
+
+### Дополнительные услуги (`/api/additionalServices`)
+
+| Метод | Путь | Описание | Статус |
+|---|---|---|---|
+| GET | /api/additionalServices | Список всех услуг с ценами | 200 |
+| GET | /api/additionalServices/:id | Услуга + список подписанных клиентов | 200 |
+
+### Бизнес-правила (ошибки)
+
+| Ситуация | Статус |
+|---|---|
+| Ресурс не найден | 404 |
+| Невалидные данные в теле запроса | 400 |
+| Шкафчик уже занят другим клиентом | 409 |
+| У клиента уже есть этот шкафчик | 409 |
+| Клиент уже подписан на эту услугу | 409 |
 
 ---
 
-## 4. Демонстрация результата
+## 5. Демонстрация результата
 
+### Список шкафчиков со статусом (GET /api/lockers)
+![Список шкафчиков](./docs/screenshots/get-lockers.png)
 
+### Список услуг (GET /api/additionalServices)
+![Список услуг](./docs/screenshots/get-services.png)
 
-### Создание тренера (POST /api/trainers)
-![Создание тренера](./docs/screenshots/create-trainer.png)
+### Услуга с клиентами (GET /api/additionalServices/POOL)
+![Услуга с клиентами](./docs/screenshots/get-service-detail.png)
 
-### Список тренеров (GET /api/trainers)
-![Список тренеров](./docs/screenshots/get-trainers.png)
+### Назначение шкафчика клиенту (POST /api/clients/:clientId/locker/:lockerId)
+![Назначение шкафчика](./docs/screenshots/assign-locker.png)
 
-### Детальная информация о тренере (GET /api/trainers/:id/detail)
-![Детальная информация о тренере](./docs/screenshots/get-trainer-detail.png)
+### 409 — шкафчик уже занят
+![Конфликт шкафчика](./docs/screenshots/locker-conflict.png)
 
-### Создание клиента (POST /api/clients)
-![Создание клиента](./docs/screenshots/create-client.png)
+### Добавление услуги клиенту (POST /api/clients/:clientId/additionalServices/SAUNA)
+![Добавление услуги](./docs/screenshots/assign-service.png)
 
-### Назначение тренера клиенту (POST /api/clients/:clientId/trainer/:trainerId)
-![Назначение тренера](./docs/screenshots/assign-trainer.png)
+### 409 — услуга уже добавлена
+![Конфликт услуги](./docs/screenshots/service-conflict.png)
 
-### Детальная информация о клиенте с тренером (GET /api/clients/:id/detail)
-![Детальная информация о клиенте](./docs/screenshots/get-client-detail.png)
+### Детальная информация о клиенте — тренер + шкафчик + услуги (GET /api/clients/:id/detail)
+![Детальная информация о клиенте](./docs/screenshots/get-client-detail-full.png)
 
-### Валидация — ошибка 400
-![Ошибка валидации](./docs/screenshots/validation-error.png)

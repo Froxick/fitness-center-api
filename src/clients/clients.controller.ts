@@ -21,47 +21,70 @@ export class ClientsController {
   // POST /api/clients
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() dto: CreateClientDto) {
-    return this.clientsService.create(dto);
+  async create(@Body() dto: CreateClientDto) {
+    return await this.clientsService.create(dto);
   }
 
   // GET /api/clients
   @Get()
-  findAll() {
-    return this.clientsService.findAll();
-  }
-
-  // GET /api/clients/:id
-  @Get(':id')
-  findById(@Param('id') id: string) {
-    return this.clientsService.findById(id);
+  async findAll() {
+    return await this.clientsService.findAll();
   }
 
   // GET /api/clients/:id/detail
   @Get(':id/detail')
-  getDetail(@Param('id') id: string) {
-    return this.clientsService.getDetail(id);
+  async getDetail(@Param('id') id: string) {
+    return await this.clientsService.getDetail(id);
+  }
+
+  // GET /api/clients/:id
+  @Get(':id')
+  async findById(@Param('id') id: string) {
+    return await this.clientsService.findById(id);
   }
 
   // PUT /api/clients/:id
   @Put(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateClientDto) {
-    return this.clientsService.update(id, dto);
+  async update(@Param('id') id: string, @Body() dto: UpdateClientDto) {
+    return await this.clientsService.update(id, dto);
   }
 
   // PATCH /api/clients/:id/status
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body() dto: UpdateClientStatusDto) {
-    return this.clientsService.updateStatus(id, dto);
+  async updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateClientStatusDto,
+  ) {
+    return await this.clientsService.updateStatus(id, dto);
   }
 
   // POST /api/clients/:clientId/trainer/:trainerId
   @Post(':clientId/trainer/:trainerId')
   @HttpCode(HttpStatus.OK)
-  assignTrainer(
+  async assignTrainer(
     @Param('clientId') clientId: string,
     @Param('trainerId') trainerId: string,
   ) {
-    return this.clientsService.assignTrainer(clientId, trainerId);
+    return await this.clientsService.assignTrainer(clientId, trainerId);
+  }
+
+  // POST /api/clients/:clientId/locker/:lockerId
+  @Post(':clientId/locker/:lockerId')
+  @HttpCode(HttpStatus.OK)
+  async assignLocker(
+    @Param('clientId') clientId: string,
+    @Param('lockerId') lockerId: string,
+  ) {
+    return await this.clientsService.assignLocker(clientId, lockerId);
+  }
+
+  // POST /api/clients/:clientId/additionalServices/:serviceId
+  @Post(':clientId/additionalServices/:serviceId')
+  @HttpCode(HttpStatus.OK)
+  async addService(
+    @Param('clientId') clientId: string,
+    @Param('serviceId') serviceId: string,
+  ) {
+    return await this.clientsService.addService(clientId, serviceId);
   }
 }

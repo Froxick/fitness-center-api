@@ -21,31 +21,34 @@ export class TrainersController {
   // POST /api/trainers
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  create(@Body() dto: CreateTrainerDto) {
-    return this.trainersService.create(dto);
+  async create(@Body() dto: CreateTrainerDto) {
+    return await this.trainersService.create(dto);
   }
 
   // GET /api/trainers
   @Get()
-  findAll() {
-    return this.trainersService.findAll();
+  async findAll() {
+    return await this.trainersService.findAll();
   }
 
   // GET /api/trainers/:id/detail
   @Get(':id/detail')
-  getDetail(@Param('id') id: string) {
-    return this.trainersService.getDetail(id);
+  async getDetail(@Param('id') id: string) {
+    return await this.trainersService.getDetail(id);
   }
 
   // PUT /api/trainers/:id
   @Put(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateTrainerDto) {
-    return this.trainersService.update(id, dto);
+  async update(@Param('id') id: string, @Body() dto: UpdateTrainerDto) {
+    return await this.trainersService.update(id, dto);
   }
 
   // PATCH /api/trainers/:id/status
   @Patch(':id/status')
-  updateStatus(@Param('id') id: string, @Body() dto: UpdateTrainerStatusDto) {
-    return this.trainersService.updateStatus(id, dto);
+  async updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateTrainerStatusDto,
+  ) {
+    return await this.trainersService.updateStatus(id, dto);
   }
 }
